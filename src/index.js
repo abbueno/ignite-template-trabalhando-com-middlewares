@@ -10,19 +10,59 @@ app.use(cors());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+
+  const user = users.find(user => user.username === username);
+
+  if(!user){
+      return response.status(404).json({error: "User not found"})
+  }
+
+  request.user = user;
+
+  next();
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+ const { user } = request;
+
+ if(!user.pro && user.todos.length === 10){
+  return response.status(403).json({error: "Todos user not availability"})
+ }
+
+ next();
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  
+  const { username } = request.headers;
+  const { id } = request.params;
+
+  const user = users.find((user) => user.username === username);
+  if (!user) return response.status(404).json({ error: 'user not found' });
+
+  if (!validate(id)) return response.status(400).json({ error: 'Id invalid' });
+
+  const todo = user.todos.find(todo => todo.id === id);
+  if (!todo) return response.status(404).json({ error: 'todo not found' });
+  
+  request.todo = todo;
+  request.user = user;
+
+  return next();
 }
 
 function findUserById(request, response, next) {
-  // Complete aqui
+  const { id } = request.params;
+
+  const user = users.find(user => user.id === id);
+
+  if(!user){
+      return response.status(404).json({error: "User not found"})
+  }
+
+  request.user = user;
+  next();
 }
 
 app.post('/users', (request, response) => {
@@ -43,7 +83,6 @@ app.post('/users', (request, response) => {
   };
 
   users.push(user);
-
   return response.status(201).json(user);
 });
 
@@ -61,7 +100,6 @@ app.patch('/users/:id/pro', findUserById, (request, response) => {
   }
 
   user.pro = true;
-
   return response.json(user);
 });
 
@@ -84,7 +122,6 @@ app.post('/todos', checksExistsUserAccount, checksCreateTodosUserAvailability, (
   };
 
   user.todos.push(newTodo);
-
   return response.status(201).json(newTodo);
 });
 
@@ -106,7 +143,7 @@ app.patch('/todos/:id/done', checksTodoExists, (request, response) => {
   return response.json(todo);
 });
 
-app.delete('/todos/:id', checksExistsUserAccount, checksTodoExists, (request, response) => {
+app.delete('/todos/:id', checksTodoExists, (request, response) => {
   const { user, todo } = request;
 
   const todoIndex = user.todos.indexOf(todo);
@@ -116,7 +153,6 @@ app.delete('/todos/:id', checksExistsUserAccount, checksTodoExists, (request, re
   }
 
   user.todos.splice(todoIndex, 1);
-
   return response.status(204).send();
 });
 
